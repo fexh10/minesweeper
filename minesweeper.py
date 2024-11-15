@@ -22,7 +22,7 @@ colors = {
     "8": (128, 128, 128)
 }
 
-def checkEmptyCells(i: int, j: int, cells: list[list[int]], clicked_cells: list[list[bool]]) -> list[list[bool]]:
+def checkEmptyCells(i: int, j: int, cells: list[list[int]], clicked_cells: list[list[bool]], flags: list[list[bool]]) -> list[list[bool]]:
     """
     If (i, j) is an empty cell, show all the empty cells around it until a number cell is reached.
 
@@ -31,6 +31,7 @@ def checkEmptyCells(i: int, j: int, cells: list[list[int]], clicked_cells: list[
         j (int): The column index of the cell.
         cells (list[list[int]]): The cells with mines and numbers.
         clicked_cells (list[list[bool]]): The cells that have been clicked.
+        flags (list[list[bool]]): The cells that have been flagged.
 
     Returns:
         list[list[bool]]: The updated clicked cells.
@@ -38,9 +39,9 @@ def checkEmptyCells(i: int, j: int, cells: list[list[int]], clicked_cells: list[
     clicked_cells[i][j] = True
     for x in range(-1, 2):
         for y in range(-1, 2):
-            if i + x >= 0 and i + x < ROWS and j + y >= 0 and j + y < COLS:
+            if i + x >= 0 and i + x < ROWS and j + y >= 0 and j + y < COLS and not flags[i + x][j + y]:
                 if not clicked_cells[i + x][j + y] and cells[i + x][j + y] == 0:
-                    clicked_cells = checkEmptyCells(i + x, j + y, cells, clicked_cells)
+                    clicked_cells = checkEmptyCells(i + x, j + y, cells, clicked_cells, flags)
                 else:
                     clicked_cells[i + x][j + y] = True
 
@@ -112,7 +113,7 @@ def getCellFromMouse(pos: tuple[int, int]) -> tuple[int, int]:
     j = y // CELLSIZE
     return i, j
 
-def drawGrid(screen: pygame.Surface, clicked_cells: list[list[bool]], cells: list[list[int]]) -> None:
+def drawGrid(screen: pygame.Surface, clicked_cells: list[list[bool]], cells: list[list[int]], flags: list[list[bool]]) -> None:
     """
     Draws a 18 x 14 grid on the screen.
     If a cell has been clicked, the cell is shown.
@@ -121,8 +122,12 @@ def drawGrid(screen: pygame.Surface, clicked_cells: list[list[bool]], cells: lis
         screen (pygame.Surface): The screen to draw the grid on.
         clicked_cells (list[list[bool]]): The cells that have been clicked.
         cells (list[list[int]]): The cells with mines and numbers.
+        flags (list[list[bool]]): The cells that have been flagged.
     """
     font = pygame.font.Font(None, 36)
+    flagImage = pygame.image.load("./assets/flag.svg")
+    flagImage = pygame.transform.scale(flagImage, (CELLSIZE // 2, CELLSIZE // 2))
+
     for i in range(ROWS):
         for j in range(COLS):
             rect = pygame.Rect(i * 50, j * 50, 50, 50)
@@ -131,8 +136,10 @@ def drawGrid(screen: pygame.Surface, clicked_cells: list[list[bool]], cells: lis
             pygame.draw.rect(screen, color1 if (i + j) % 2 == 0 else color2, rect)
 
             if clicked_cells[i][j] and cells[i][j] != 0:
-                    text = font.render(str(cells[i][j]), True, colors[str(cells[i][j])])
-                    screen.blit(text, rect.move((CELLSIZE - text.get_width()) // 2, (CELLSIZE - text.get_height()) // 2))
+                text = font.render(str(cells[i][j]), True, colors[str(cells[i][j])])
+                screen.blit(text, rect.move((CELLSIZE - text.get_width()) // 2, (CELLSIZE - text.get_height()) // 2))
+            elif flags[i][j] and not clicked_cells[i][j]:
+                screen.blit(flagImage, rect.move((CELLSIZE - flagImage.get_width()) // 2, (CELLSIZE - flagImage.get_height()) // 2))
 
 def main() -> None:
     """
@@ -145,6 +152,8 @@ def main() -> None:
     clock = pygame.time.Clock()
     running = True
     clicked_cells = [[False for _ in range(COLS)] for _ in range(ROWS)]
+    flags = [[False for _ in range(COLS)] for _ in range(ROWS)]
+
     cells = populateCells()
 
     while running:
@@ -155,15 +164,15 @@ def main() -> None:
                 cell = getCellFromMouse(pygame.mouse.get_pos())
                 if cell:
                     i, j = cell
-                    if not clicked_cells[i][j]:
+                    if event.button == 1 and not clicked_cells[i][j] and not flags[i][j]:
                         if cells[i][j] == 0:
-                            clicked_cells = checkEmptyCells(i, j, cells, clicked_cells)
+                            clicked_cells = checkEmptyCells(i, j, cells, clicked_cells, flags)
                         clicked_cells[i][j] = True
-                    
-
+                    elif event.button == 3:
+                        flags[i][j] = not flags[i][j]
                 
         screen.fill("black")
-        drawGrid(screen, clicked_cells, cells)
+        drawGrid(screen, clicked_cells, cells, flags)
         pygame.display.flip()
         clock.tick(60)
 
