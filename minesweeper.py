@@ -2,11 +2,49 @@ import pygame
 from random import randint
 
 # Constants
-GREEN1 = (185, 221, 119)
-GREEN2 = (191, 225, 125)
 CELLSIZE = 50
 WIDTH, HEIGHT = 900, 700
 ROWS, COLS = 18, 14
+
+colors = {
+    "green1": (185, 221, 119),
+    "green2": (191, 225, 125),
+    "brown1": (215, 184, 153),
+    "brown2": (229, 194, 159),
+    "-1": (0, 0, 0),
+    "1": (0, 0, 255),
+    "2": (0, 128, 0),
+    "3": (255, 0, 0),
+    "4": (0, 0, 128),
+    "5": (128, 0, 0),
+    "6": (0, 128, 128),
+    "7": (1, 3, 1),
+    "8": (128, 128, 128)
+}
+
+def checkEmptyCells(i: int, j: int, cells: list[list[int]], clicked_cells: list[list[bool]]) -> list[list[bool]]:
+    """
+    If (i, j) is an empty cell, show all the empty cells around it until a number cell is reached.
+
+    Args:
+        i (int): The row index of the cell.
+        j (int): The column index of the cell.
+        cells (list[list[int]]): The cells with mines and numbers.
+        clicked_cells (list[list[bool]]): The cells that have been clicked.
+
+    Returns:
+        list[list[bool]]: The updated clicked cells.
+    """
+    clicked_cells[i][j] = True
+    for x in range(-1, 2):
+        for y in range(-1, 2):
+            if i + x >= 0 and i + x < ROWS and j + y >= 0 and j + y < COLS:
+                if not clicked_cells[i + x][j + y] and cells[i + x][j + y] == 0:
+                    clicked_cells = checkEmptyCells(i + x, j + y, cells, clicked_cells)
+                else:
+                    clicked_cells[i + x][j + y] = True
+
+    return clicked_cells
 
 def checkCell(i: int, j: int, cells: list[list[int]]) -> int:
     """
@@ -88,12 +126,13 @@ def drawGrid(screen: pygame.Surface, clicked_cells: list[list[bool]], cells: lis
     for i in range(ROWS):
         for j in range(COLS):
             rect = pygame.Rect(i * 50, j * 50, 50, 50)
-            pygame.draw.rect(screen, GREEN1 if (i + j) % 2 == 0 else GREEN2, rect)
+            color1 = colors["brown1"] if clicked_cells[i][j] else colors["green1"]
+            color2 = colors["brown2"] if clicked_cells[i][j] else colors["green2"]
+            pygame.draw.rect(screen, color1 if (i + j) % 2 == 0 else color2, rect)
 
-            if clicked_cells[i][j]:
-                    text = font.render(str(cells[i][j]), True, (0, 0, 0))
+            if clicked_cells[i][j] and cells[i][j] != 0:
+                    text = font.render(str(cells[i][j]), True, colors[str(cells[i][j])])
                     screen.blit(text, rect.move((CELLSIZE - text.get_width()) // 2, (CELLSIZE - text.get_height()) // 2))
-
 
 def main() -> None:
     """
@@ -117,6 +156,8 @@ def main() -> None:
                 if cell:
                     i, j = cell
                     if not clicked_cells[i][j]:
+                        if cells[i][j] == 0:
+                            clicked_cells = checkEmptyCells(i, j, cells, clicked_cells)
                         clicked_cells[i][j] = True
                     
 
