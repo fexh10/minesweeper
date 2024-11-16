@@ -1,3 +1,4 @@
+import sys
 import pygame
 from random import randint
 
@@ -11,7 +12,9 @@ colors = {
     "green2": (191, 225, 125),
     "brown1": (215, 184, 153),
     "brown2": (229, 194, 159),
-    "-1": (0, 0, 0),
+    "red": (255, 0, 0),
+    "white": (255, 255, 255),
+    "transparentGray": (192,192,192, 20),
     "1": (0, 0, 255),
     "2": (0, 128, 0),
     "3": (255, 0, 0),
@@ -22,6 +25,55 @@ colors = {
     "8": (128, 128, 128)
 }
 
+def gameOver(screen: pygame.Surface, cells: list[list[int]], flags: list[list[bool]]) -> bool:
+    """
+    Shows all mines and ends the game.
+    At the end of the game, the player can choose to play again.
+
+    Args:
+        screen (pygame.Surface): The screen to show the mines.
+        cells (list[list[int]]): The cells with mines and numbers.
+        flags (list[list[bool]]): The cells that have been flagged.
+
+    Returns:
+        bool: True if the player wants to play again, False otherwise.
+    """
+    bombImage = pygame.image.load("./assets/bomb.svg")
+    bombImage = pygame.transform.scale(bombImage, (CELLSIZE // 2, CELLSIZE // 2))
+    font = pygame.font.Font(None, 50)  
+
+    for i in range(ROWS):
+        for j in range(COLS):
+            rect = pygame.Rect(i * 50, j * 50, 50, 50)
+            if cells[i][j] == -1 and not flags[i][j]:
+                screen.blit(bombImage, rect.move((CELLSIZE - bombImage.get_width()) // 2, (CELLSIZE - bombImage.get_height()) // 2))
+            elif flags[i][j] and cells[i][j] != -1:
+                pygame.draw.line(screen, colors["red"], rect.topleft, rect.bottomright, 5)
+                pygame.draw.line(screen, colors["red"], rect.bottomleft, rect.topright, 5)
+    pygame.display.flip()
+    pygame.time.wait(1000)
+
+    overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+    overlay.fill(colors["transparentGray"])
+
+    while True:
+        screen.blit(overlay, (0, 0))
+
+        button_rect = pygame.Rect(screen.get_width() // 2 - 100, screen.get_height() // 2 - 50, 200, 100)
+        pygame.draw.rect(screen, colors["red"], button_rect)
+        text = font.render("Play Again", True, colors["white"])
+        text_rect = text.get_rect(center=button_rect.center)
+        screen.blit(text, text_rect)
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if button_rect.collidepoint(event.pos):
+                    return True
+    
 def checkEmptyCells(i: int, j: int, cells: list[list[int]], clicked_cells: list[list[bool]], flags: list[list[bool]]) -> list[list[bool]]:
     """
     If (i, j) is an empty cell, show all the empty cells around it until a number cell is reached.
@@ -117,6 +169,8 @@ def drawGrid(screen: pygame.Surface, clicked_cells: list[list[bool]], cells: lis
     """
     Draws a 18 x 14 grid on the screen.
     If a cell has been clicked, the cell is shown.
+    If a flag has been placed on a cell, the flag is shown.
+    If a mine is clicked, all mines are shown.
 
     Args:
         screen (pygame.Surface): The screen to draw the grid on.
@@ -135,12 +189,12 @@ def drawGrid(screen: pygame.Surface, clicked_cells: list[list[bool]], cells: lis
             color2 = colors["brown2"] if clicked_cells[i][j] else colors["green2"]
             pygame.draw.rect(screen, color1 if (i + j) % 2 == 0 else color2, rect)
 
-            if clicked_cells[i][j] and cells[i][j] != 0:
+            if clicked_cells[i][j] and cells[i][j] >= 1:
                 text = font.render(str(cells[i][j]), True, colors[str(cells[i][j])])
                 screen.blit(text, rect.move((CELLSIZE - text.get_width()) // 2, (CELLSIZE - text.get_height()) // 2))
             elif flags[i][j] and not clicked_cells[i][j]:
                 screen.blit(flagImage, rect.move((CELLSIZE - flagImage.get_width()) // 2, (CELLSIZE - flagImage.get_height()) // 2))
-
+                            
 def main() -> None:
     """
     Main function for the game.
@@ -167,7 +221,15 @@ def main() -> None:
                     if event.button == 1 and not clicked_cells[i][j] and not flags[i][j]:
                         if cells[i][j] == 0:
                             clicked_cells = checkEmptyCells(i, j, cells, clicked_cells, flags)
-                        clicked_cells[i][j] = True
+                        elif cells[i][j] == -1:
+                            if gameOver(screen, cells, flags):
+                                clicked_cells = [[False for _ in range(COLS)] for _ in range(ROWS)]
+                                flags = [[False for _ in range(COLS)] for _ in range(ROWS)]
+                                cells = populateCells()
+                            else:
+                                sys.exit()
+                        else:
+                            clicked_cells[i][j] = True
                     elif event.button == 3:
                         flags[i][j] = not flags[i][j]
                 
