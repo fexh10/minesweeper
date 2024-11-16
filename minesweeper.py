@@ -60,8 +60,8 @@ def finalScreen(screen: pygame.Surface, message: str, buttonColor: tuple) -> boo
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if button_rect.collidepoint(event.pos):
+            # check if the player wants to play again. keys ENTER, SPACE and mouse click are accepted
+            elif (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and button_rect.collidepoint(event.pos)) or (event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_SPACE)):
                     return True
 
 def checkWin(screen: pygame.Surface, clicked_cells: list[list[bool]], cells: list[list[int]], flags: list[list[bool]]) -> bool:
