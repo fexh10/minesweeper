@@ -25,6 +25,44 @@ colors = {
     "8": (128, 128, 128)
 }
 
+def finalScreen(screen: pygame.Surface, message: str, buttonColor: tuple) -> bool:
+    """
+    Shows a message on the screen and asks the player if they want to play again.
+
+    Args:
+        screen (pygame.Surface): The screen to show the message.
+        message (str): The message to show on the screen.
+        color (tuple): The color of the button.
+    
+    Returns:
+        bool: True if the player wants to play again, False otherwise.
+    """
+    font = pygame.font.Font(None, 50)  
+    overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+    overlay.fill(colors["transparentGray"])
+
+    while True:
+        screen.blit(overlay, (0, 0))
+
+        button_rect = pygame.Rect(screen.get_width() // 2 - 100, screen.get_height() // 2 - 50, 200, 100)
+        pygame.draw.rect(screen, buttonColor, button_rect)
+        
+        lines = message.split("\n")
+        line_height = font.get_linesize()
+        for i, line in enumerate(lines):
+            text = font.render(line, True, colors["white"])
+            text_rect = text.get_rect(center=(button_rect.centerx, button_rect.centery - (len(lines) - 1) * line_height // 2 + i * line_height))
+            screen.blit(text, text_rect)
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if button_rect.collidepoint(event.pos):
+                    return True
+
 def gameOver(screen: pygame.Surface, cells: list[list[int]], flags: list[list[bool]]) -> bool:
     """
     Shows all mines and ends the game.
@@ -40,7 +78,6 @@ def gameOver(screen: pygame.Surface, cells: list[list[int]], flags: list[list[bo
     """
     bombImage = pygame.image.load("./assets/bomb.svg")
     bombImage = pygame.transform.scale(bombImage, (CELLSIZE // 2, CELLSIZE // 2))
-    font = pygame.font.Font(None, 50)  
 
     for i in range(ROWS):
         for j in range(COLS):
@@ -52,27 +89,7 @@ def gameOver(screen: pygame.Surface, cells: list[list[int]], flags: list[list[bo
                 pygame.draw.line(screen, colors["red"], rect.bottomleft, rect.topright, 5)
     pygame.display.flip()
     pygame.time.wait(1000)
-
-    overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
-    overlay.fill(colors["transparentGray"])
-
-    while True:
-        screen.blit(overlay, (0, 0))
-
-        button_rect = pygame.Rect(screen.get_width() // 2 - 100, screen.get_height() // 2 - 50, 200, 100)
-        pygame.draw.rect(screen, colors["red"], button_rect)
-        text = font.render("Play Again", True, colors["white"])
-        text_rect = text.get_rect(center=button_rect.center)
-        screen.blit(text, text_rect)
-
-        pygame.display.flip()
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return False
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if button_rect.collidepoint(event.pos):
-                    return True
+    return finalScreen(screen, "Game Over!\nPlay Again?", colors["red"])
     
 def checkEmptyCells(i: int, j: int, cells: list[list[int]], clicked_cells: list[list[bool]], flags: list[list[bool]]) -> list[list[bool]]:
     """
