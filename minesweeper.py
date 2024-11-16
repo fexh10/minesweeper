@@ -10,6 +10,7 @@ ROWS, COLS = 18, 14
 colors = {
     "green1": (185, 221, 119),
     "green2": (191, 225, 125),
+    "vividGreen": (0, 128, 0),
     "brown1": (215, 184, 153),
     "brown2": (229, 194, 159),
     "red": (255, 0, 0),
@@ -35,7 +36,7 @@ def finalScreen(screen: pygame.Surface, message: str, buttonColor: tuple) -> boo
         color (tuple): The color of the button.
     
     Returns:
-        bool: True if the player wants to play again, False otherwise.
+        bool: True if the player wants to play again.
     """
     font = pygame.font.Font(None, 50)  
     overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
@@ -58,10 +59,31 @@ def finalScreen(screen: pygame.Surface, message: str, buttonColor: tuple) -> boo
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                return False
+                sys.exit()
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if button_rect.collidepoint(event.pos):
                     return True
+
+def checkWin(screen: pygame.Surface, clicked_cells: list[list[bool]], cells: list[list[int]], flags: list[list[bool]]) -> bool:
+    """
+    Checks if the player has won the game.
+    The player wins the game if all cells with mines are flagged and all other cells are clicked.
+    The player can choose to play again after winning the game.
+
+    Args:
+        screen (pygame.Surface): The screen to show the win message.
+        clicked_cells (list[list[bool]]): The cells that have been clicked.
+        cells (list[list[int]]): The cells with mines and numbers.
+        flags (list[list[bool]]): The cells that have been flagged.
+
+    Returns:
+        bool: True if the player has won the game, False otherwise
+    """
+    for i in range(ROWS):
+        for j in range(COLS):
+            if (cells[i][j] == -1 and not flags[i][j]) or (cells[i][j] != -1 and not clicked_cells[i][j]):
+                return False
+    return finalScreen(screen, "You Win!\nPlay Again?", colors["vividGreen"])
 
 def gameOver(screen: pygame.Surface, cells: list[list[int]], flags: list[list[bool]]) -> bool:
     """
@@ -182,7 +204,20 @@ def getCellFromMouse(pos: tuple[int, int]) -> tuple[int, int]:
     j = y // CELLSIZE
     return i, j
 
-def drawGrid(screen: pygame.Surface, clicked_cells: list[list[bool]], cells: list[list[int]], flags: list[list[bool]]) -> None:
+def restartVar() -> tuple[list[list[bool]], list[list[bool]], list[list[int]], int]:
+    """
+    Restarts the game variables.
+
+    Returns:
+        tuple[list[list[bool]], list[list[bool]], list[list[int]], int]: The updated game variables.
+    """
+    clicked_cells = [[False for _ in range(COLS)] for _ in range(ROWS)]
+    flags = [[False for _ in range(COLS)] for _ in range(ROWS)]
+    cells = populateCells()
+    flagsCount = 40
+    return clicked_cells, flags, cells, flagsCount
+
+def drawGrid(screen: pygame.Surface, clicked_cells: list[list[bool]], cells: list[list[int]], flags: list[list[bool]], flagsCount: int) -> None:
     """
     Draws a 18 x 14 grid on the screen.
     If a cell has been clicked, the cell is shown.
@@ -194,6 +229,7 @@ def drawGrid(screen: pygame.Surface, clicked_cells: list[list[bool]], cells: lis
         clicked_cells (list[list[bool]]): The cells that have been clicked.
         cells (list[list[int]]): The cells with mines and numbers.
         flags (list[list[bool]]): The cells that have been flagged.
+        flagsCount (int): The number of flags left.
     """
     font = pygame.font.Font(None, 36)
     flagImage = pygame.image.load("./assets/flag.svg")
@@ -224,6 +260,7 @@ def main() -> None:
     running = True
     clicked_cells = [[False for _ in range(COLS)] for _ in range(ROWS)]
     flags = [[False for _ in range(COLS)] for _ in range(ROWS)]
+    flagsCount = 40
 
     cells = populateCells()
 
@@ -240,20 +277,23 @@ def main() -> None:
                             clicked_cells = checkEmptyCells(i, j, cells, clicked_cells, flags)
                         elif cells[i][j] == -1:
                             if gameOver(screen, cells, flags):
-                                clicked_cells = [[False for _ in range(COLS)] for _ in range(ROWS)]
-                                flags = [[False for _ in range(COLS)] for _ in range(ROWS)]
-                                cells = populateCells()
-                            else:
-                                sys.exit()
+                                clicked_cells, flags, cells, flagsCount = restartVar()
                         else:
                             clicked_cells[i][j] = True
                     elif event.button == 3:
-                        flags[i][j] = not flags[i][j]
-                
+                        if (flagsCount > 0 or flags[i][j]) and not clicked_cells[i][j]:
+                            flags[i][j] = not flags[i][j]
+                            if flags[i][j]:
+                                flagsCount -= 1
+                            else:
+                                flagsCount += 1        
         screen.fill("black")
-        drawGrid(screen, clicked_cells, cells, flags)
+        drawGrid(screen, clicked_cells, cells, flags, flagsCount)
         pygame.display.flip()
         clock.tick(60)
+        #check for win
+        if flagsCount == 0 and checkWin(screen, clicked_cells, cells, flags):
+            clicked_cells, flags, cells, flagsCount = restartVar()
 
     pygame.quit()
 
