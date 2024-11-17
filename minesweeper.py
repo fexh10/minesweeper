@@ -98,7 +98,7 @@ def gameOver(screen: pygame.Surface, cells: list[list[int]], flags: list[list[bo
     Returns:
         bool: True if the player wants to play again, False otherwise.
     """
-    bombImage = pygame.image.load("./assets/bomb.svg")
+    bombImage = pygame.image.load("./assets/mine.png")
     bombImage = pygame.transform.scale(bombImage, (CELLSIZE // 2, CELLSIZE // 2))
 
     for i in range(ROWS):
@@ -232,8 +232,8 @@ def drawGrid(screen: pygame.Surface, clicked_cells: list[list[bool]], cells: lis
         flagsCount (int): The number of flags left.
     """
     font = pygame.font.Font(None, 36)
-    flagImage = pygame.image.load("./assets/flag.svg")
-    flagImage = pygame.transform.scale(flagImage, (CELLSIZE // 2, CELLSIZE // 2))
+    flagImage = pygame.image.load("./assets/flag.png")
+    flagImage = pygame.transform.scale(flagImage, (CELLSIZE // 1.5, CELLSIZE // 1.5))
 
     for i in range(ROWS):
         for j in range(COLS):
@@ -256,7 +256,11 @@ def main() -> None:
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Minesweeper")
+    icon = pygame.image.load("./assets/icon.png")
+    icon = pygame.transform.scale(icon, (32, 32))
+    pygame.display.set_icon(icon)
     clock = pygame.time.Clock()
+
     running = True
     clicked_cells = [[False for _ in range(COLS)] for _ in range(ROWS)]
     flags = [[False for _ in range(COLS)] for _ in range(ROWS)]
