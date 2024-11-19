@@ -1,15 +1,18 @@
 import sys
 import pygame
+import time
 from random import randint
 
 # Constants
 CELLSIZE = 50
-WIDTH, HEIGHT = 900, 700
+WIDTH, HEIGHT = 900, 750
 ROWS, COLS = 18, 14
 
+# global variables
 colors = {
     "green1": (185, 221, 119),
     "green2": (191, 225, 125),
+    "green3": (74, 117, 44),
     "vividGreen": (0, 128, 0),
     "brown1": (215, 184, 153),
     "brown2": (229, 194, 159),
@@ -25,6 +28,13 @@ colors = {
     "7": (1, 3, 1),
     "8": (128, 128, 128)
 }
+flagImage = pygame.image.load("./assets/flag.png")
+flagImage = pygame.transform.scale(flagImage, (CELLSIZE // 1.5, CELLSIZE // 1.5))
+bombImage = pygame.image.load("./assets/mine.png")
+bombImage = pygame.transform.scale(bombImage, (CELLSIZE // 2, CELLSIZE // 2))
+clockImage = pygame.image.load("./assets/clock.png")
+clockImage = pygame.transform.scale(clockImage, (CELLSIZE // 2, CELLSIZE // 2))
+startTime = time.time()
 
 def finalScreen(screen: pygame.Surface, message: str, buttonColor: tuple) -> bool:
     """
@@ -98,9 +108,6 @@ def gameOver(screen: pygame.Surface, cells: list[list[int]], flags: list[list[bo
     Returns:
         bool: True if the player wants to play again, False otherwise.
     """
-    bombImage = pygame.image.load("./assets/mine.png")
-    bombImage = pygame.transform.scale(bombImage, (CELLSIZE // 2, CELLSIZE // 2))
-
     for i in range(ROWS):
         for j in range(COLS):
             rect = pygame.Rect(i * 50, j * 50, 50, 50)
@@ -206,38 +213,57 @@ def getCellFromMouse(pos: tuple[int, int]) -> tuple[int, int]:
 
 def restartVar() -> tuple[list[list[bool]], list[list[bool]], list[list[int]], int]:
     """
-    Restarts the game variables.
+    Restarts the game variables and the time.
 
     Returns:
         tuple[list[list[bool]], list[list[bool]], list[list[int]], int]: The updated game variables.
     """
+    global startTime
+
     clicked_cells = [[False for _ in range(COLS)] for _ in range(ROWS)]
     flags = [[False for _ in range(COLS)] for _ in range(ROWS)]
     cells = populateCells()
     flagsCount = 40
+    startTime = time.time()
     return clicked_cells, flags, cells, flagsCount
 
-def drawGrid(screen: pygame.Surface, clicked_cells: list[list[bool]], cells: list[list[int]], flags: list[list[bool]], flagsCount: int) -> None:
+def drawBottomBar(screen: pygame.Surface, flagsCount: int) -> None:
     """
-    Draws a 18 x 14 grid on the screen.
-    If a cell has been clicked, the cell is shown.
-    If a flag has been placed on a cell, the flag is shown.
-    If a mine is clicked, all mines are shown.
+    Draws the bottom bar of the screen.
+    The bottom bar shows the number of flags left and the time elapsed.
+
+    Args:
+        screen (pygame.Surface): The screen to draw the bottom bar on.
+        flagsCount (int): The number of flags left.
+    """
+    font = pygame.font.Font(None, 36)
+    pygame.draw.rect(screen, colors["green3"], pygame.Rect(0, HEIGHT - CELLSIZE, WIDTH, CELLSIZE))
+    screen.blit(flagImage, (10, HEIGHT - CELLSIZE // 2 - flagImage.get_height() // 2))
+    text = font.render(str(flagsCount), True, colors["white"])
+    screen.blit(text, (10 + flagImage.get_width() + 10, HEIGHT - CELLSIZE // 2 - text.get_height() // 2))
+    timeElapsed = int(time.time() - startTime)
+    text = font.render(str(timeElapsed), True, colors["white"])
+    screen.blit(text, (WIDTH - 10 - text.get_width(), HEIGHT - CELLSIZE // 2 - text.get_height() // 2))
+    screen.blit(clockImage, (WIDTH - 10 - text.get_width() - 10 - clockImage.get_width(), HEIGHT - CELLSIZE // 2 - clockImage.get_height() // 2))
+
+def drawGrid(screen: pygame.Surface, clicked_cells: list[list[bool]], cells: list[list[int]], flags: list[list[bool]]) -> None:
+    """
+    Draws a grid on the screen, with the following rules:
+    - If a cell has a number, the number is shown.
+    - If a flag has been placed on a cell, the flag is shown.
+    - If a mine is clicked, all mines are shown.
 
     Args:
         screen (pygame.Surface): The screen to draw the grid on.
         clicked_cells (list[list[bool]]): The cells that have been clicked.
         cells (list[list[int]]): The cells with mines and numbers.
         flags (list[list[bool]]): The cells that have been flagged.
-        flagsCount (int): The number of flags left.
     """
     font = pygame.font.Font(None, 36)
-    flagImage = pygame.image.load("./assets/flag.png")
-    flagImage = pygame.transform.scale(flagImage, (CELLSIZE // 1.5, CELLSIZE // 1.5))
 
     for i in range(ROWS):
         for j in range(COLS):
-            rect = pygame.Rect(i * 50, j * 50, 50, 50)
+            rect = pygame.Rect(i * CELLSIZE, j * CELLSIZE, CELLSIZE, CELLSIZE)
             color1 = colors["brown1"] if clicked_cells[i][j] else colors["green1"]
             color2 = colors["brown2"] if clicked_cells[i][j] else colors["green2"]
             pygame.draw.rect(screen, color1 if (i + j) % 2 == 0 else color2, rect)
@@ -276,6 +302,7 @@ def main() -> None:
                 cell = getCellFromMouse(pygame.mouse.get_pos())
                 if cell:
                     i, j = cell
+                    if j >= COLS: continue
                     if event.button == 1 and not clicked_cells[i][j] and not flags[i][j]:
                         if cells[i][j] == 0:
                             clicked_cells = checkEmptyCells(i, j, cells, clicked_cells, flags)
@@ -292,7 +319,8 @@ def main() -> None:
                             else:
                                 flagsCount += 1        
         screen.fill("black")
-        drawGrid(screen, clicked_cells, cells, flags, flagsCount)
+        drawBottomBar(screen, flagsCount)
+        drawGrid(screen, clicked_cells, cells, flags)
         pygame.display.flip()
         clock.tick(60)
         #check for win
